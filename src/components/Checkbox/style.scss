@@ -19,6 +19,7 @@ $padding: 26px;
         width: $length;
         height: $length;
         border-radius: 3px;
+        text-shadow: none;
         transition: background-color 0.3s ease;
         transform: translateY(-$length / 2);
         background-color: $color-white;
