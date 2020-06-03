@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import capitalize from 'lodash/capitalize'
 import { Header, Card, Row, Col, Switch, ButtonSelect, ButtonSelectOptions, Input, Icon } from '@components'
 import { useI18n, useClashXData, useAPIInfo, useGeneral, useIdentity } from '@stores'
 import { updateConfig } from '@lib/request'
@@ -143,7 +144,7 @@ export default function Settings () {
                         <Col span={14} className="value-column">
                             <ButtonSelect
                                 options={proxyModeOptions}
-                                value={mode}
+                                value={capitalize(mode)}
                                 onSelect={handleProxyModeChange}
                             />
                         </Col>
@@ -155,7 +156,7 @@ export default function Settings () {
                         <Col span={8}>
                             <Input
                                 value={info.socks5ProxyPort}
-                                onChange={socks5ProxyPort => set('socks5ProxyPort', parseInt(socks5ProxyPort, 10))}
+                                onChange={socks5ProxyPort => set('socks5ProxyPort', +socks5ProxyPort)}
                                 onBlur={handleSocksPortSave}
                             />
                         </Col>
@@ -169,7 +170,7 @@ export default function Settings () {
                         <Col span={8}>
                             <Input
                                 value={info.httpProxyPort}
-                                onChange={httpProxyPort => set('httpProxyPort', parseInt(httpProxyPort, 10))}
+                                onChange={httpProxyPort => set('httpProxyPort', +httpProxyPort)}
                                 onBlur={handleHttpPortSave}
                             />
                         </Col>
