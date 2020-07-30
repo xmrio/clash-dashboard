@@ -18,6 +18,7 @@ export default {
             proxyMode: '代理模式',
             socks5ProxyPort: 'Socks5 代理端口',
             httpProxyPort: 'HTTP 代理端口',
+            mixedProxyPort: '混合代理端口',
             externalController: '外部控制设置'
         },
         values: {
@@ -25,7 +26,8 @@ export default {
             en: 'English',
             global: '全局',
             rules: '规则',
-            direct: '直连'
+            direct: '直连',
+            script: '脚本'
         },
         versionString: '当前 ClashX 已是最新版本：{{version}}',
         checkUpdate: '检查更新',

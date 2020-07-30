@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import classnames from 'classnames'
 import capitalize from 'lodash/capitalize'
 import { Header, Card, Row, Col, Switch, ButtonSelect, ButtonSelectOptions, Input, Icon } from '@components'
-import { useI18n, useClashXData, useAPIInfo, useGeneral, useIdentity } from '@stores'
+import { useI18n, useClashXData, useAPIInfo, useGeneral, useIdentity, useVersion } from '@stores'
 import { updateConfig } from '@lib/request'
 import { useObject } from '@lib/hook'
 import { jsBridge } from '@lib/jsBridge'
@@ -12,6 +12,7 @@ import './style.scss'
 const languageOptions: ButtonSelectOptions[] = [{ label: '中文', value: 'zh_CN' }, { label: 'English', value: 'en_US' }]
 
 export default function Settings () {
+    const { premium } = useVersion()
     const { data: clashXData, update: fetchClashXData } = useClashXData()
     const { general, update: fetchGeneral } = useGeneral()
     const { set: setIdentity } = useIdentity()
@@ -20,7 +21,8 @@ export default function Settings () {
     const { t } = useTranslation('Settings')
     const [info, set] = useObject({
         socks5ProxyPort: 7891,
-        httpProxyPort: 7890
+        httpProxyPort: 7890,
+        mixedProxyPort: 0
     })
 
     useEffect(() => {
@@ -31,6 +33,7 @@ export default function Settings () {
     useEffect(() => {
         set('socks5ProxyPort', general.socksPort)
         set('httpProxyPort', general.port)
+        set('mixedProxyPort', general.mixedPort ?? 0)
     }, [general])
 
     async function handleProxyModeChange (mode: string) {
@@ -62,6 +65,11 @@ export default function Settings () {
         await fetchGeneral()
     }
 
+    async function handleMixedPortSave () {
+        await updateConfig({ 'mixed-port': info.mixedProxyPort })
+        await fetchGeneral()
+    }
+
     async function handleAllowLanChange (state: boolean) {
         await updateConfig({ 'allow-lan': state })
         await fetchGeneral()
@@ -78,11 +86,17 @@ export default function Settings () {
         systemProxy
     } = clashXData
 
-    const proxyModeOptions: ButtonSelectOptions[] = [
-        { label: t('values.global'), value: 'Global' },
-        { label: t('values.rules'), value: 'Rule' },
-        { label: t('values.direct'), value: 'Direct' }
-    ]
+    const proxyModeOptions = useMemo(() => {
+        const options = [
+            { label: t('values.global'), value: 'Global' },
+            { label: t('values.rules'), value: 'Rule' },
+            { label: t('values.direct'), value: 'Direct' }
+        ]
+        if (premium) {
+            options.push({ label: t('values.script'), value: 'Script' })
+        }
+        return options
+    }, [t, premium])
 
     return (
         <div className="page">
@@ -175,6 +189,21 @@ export default function Settings () {
                             />
                         </Col>
                     </Col>
+                    <Col span={12}>
+                        <Col span={14} offset={1}>
+                            <span className="label">{t('labels.mixedProxyPort')}</span>
+                        </Col>
+                        <Col span={8}>
+                            <Input
+                                disabled={clashXData.isClashX}
+                                value={info.mixedProxyPort}
+                                onChange={mixedProxyPort => set('mixedProxyPort', +mixedProxyPort)}
+                                onBlur={handleMixedPortSave}
+                            />
+                        </Col>
+                    </Col>
+                </Row>
+                <Row>
                     <Col span={12}>
                         <Col span={12} offset={1}>
                             <span className="label">{t('labels.externalController')}</span>

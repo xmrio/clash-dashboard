@@ -18,6 +18,7 @@ export default {
             proxyMode: 'Mode',
             socks5ProxyPort: 'Socks5 proxy port',
             httpProxyPort: 'HTTP proxy port',
+            mixedProxyPort: 'Mixed proxy port',
             externalController: 'External controller'
         },
         values: {
@@ -25,7 +26,8 @@ export default {
             en: 'English',
             global: 'Global',
             rules: 'Rules',
-            direct: 'Direct'
+            direct: 'Direct',
+            script: 'Script'
         },
         versionString: 'Current ClashX is the latest version：{{version}}',
         checkUpdate: 'Check Update',
