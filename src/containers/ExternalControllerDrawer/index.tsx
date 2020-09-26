@@ -5,8 +5,8 @@ import { useI18n, useAPIInfo, useIdentity } from '@stores'
 import './style.scss'
 
 export default function ExternalController () {
-    const { useTranslation } = useI18n()
-    const { t } = useTranslation('Settings')
+    const { translation } = useI18n()
+    const { t } = translation('Settings')
     const { data: info, update, fetch } = useAPIInfo()
     const { identity, set: setIdentity } = useIdentity()
     const [value, set] = useObject({
@@ -17,11 +17,11 @@ export default function ExternalController () {
 
     useEffect(() => {
         fetch()
-    }, [])
+    }, [fetch])
 
     useEffect(() => {
         set({ hostname: info.hostname, port: info.port, secret: info.secret })
-    }, [info])
+    }, [info, set])
 
     function handleOk () {
         const { hostname, port, secret } = value

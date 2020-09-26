@@ -1,5 +1,5 @@
 import * as API from '@lib/request'
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 
 type Connections = API.Connections & { completed?: boolean, speed: { upload: number, download: number } }
 
@@ -28,14 +28,11 @@ class Store {
 
         for (const id of mapping.keys()) {
             if (!this.connections.has(id)) {
-                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 this.connections.set(id, { ...mapping.get(id)!, speed: { upload: 0, download: 0 } })
                 continue
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const c = this.connections.get(id)!
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const n = mapping.get(id)!
             this.connections?.set(id, { ...n, speed: { upload: n.upload - c.upload, download: n.download - c.download } })
         }
@@ -67,16 +64,16 @@ export function useConnections () {
     const [connections, setConnections] = useState<Connections[]>([])
     const [save, setSave] = useState<boolean>(false)
 
-    function feed (connections: API.Connections[]) {
+    const feed = useCallback(function (connections: API.Connections[]) {
         store.appendToSet(connections)
         if (shouldFlush.current) {
             setConnections(store.getConnections())
         }
 
         shouldFlush.current = !shouldFlush.current
-    }
+    }, [store])
 
-    function toggleSave () {
+    const toggleSave = useCallback(function () {
         const state = store.toggleSave()
         setSave(state)
 
@@ -85,7 +82,7 @@ export function useConnections () {
         }
 
         shouldFlush.current = true
-    }
+    }, [store])
 
     return { connections, feed, toggleSave, save }
 }
