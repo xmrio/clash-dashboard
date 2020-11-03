@@ -60,6 +60,9 @@ const EN = {
             title: 'Warning',
             content: 'This would close all connections'
         },
+        filter: {
+            all: 'All'
+        },
         columns: {
             host: 'Host',
             network: 'Network',
@@ -69,7 +72,8 @@ const EN = {
             time: 'Time',
             speed: 'Speed',
             upload: 'Upload',
-            download: 'Download'
+            download: 'Download',
+            sourceIP: 'Source IP'
         }
     },
     Proxies: {

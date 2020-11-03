@@ -1,6 +1,8 @@
-import React, { useMemo, useLayoutEffect, useCallback } from 'react'
-import { Cell, Column, ColumnInstance, TableOptions, useBlockLayout, useResizeColumns, UseResizeColumnsColumnProps, UseResizeColumnsOptions, useSortBy, UseSortByColumnOptions, UseSortByColumnProps, UseSortByOptions, useTable } from 'react-table'
+import React, { useMemo, useLayoutEffect, useCallback, useRef, useState } from 'react'
+import { Cell, Column, ColumnInstance, TableInstance, TableOptions, useBlockLayout, useFilters, UseFiltersInstanceProps, UseFiltersOptions, useResizeColumns, UseResizeColumnsColumnProps, UseResizeColumnsOptions, useSortBy, UseSortByColumnOptions, UseSortByColumnProps, UseSortByOptions, useTable } from 'react-table'
 import classnames from 'classnames'
+import { useScroll } from 'react-use'
+import { groupBy } from 'lodash'
 import { Header, Card, Checkbox, Modal, Icon } from '@components'
 import { useI18n } from '@stores'
 import * as API from '@lib/request'
@@ -8,6 +10,7 @@ import { StreamReader } from '@lib/streamer'
 import { useObject, useVisible } from '@lib/hook'
 import { fromNow } from '@lib/date'
 import { RuleType } from '@models'
+import { Devices } from './Devices'
 import { useConnections } from './store'
 import './style.scss'
 
@@ -20,10 +23,11 @@ enum Columns {
     Speed = 'speed',
     Upload = 'upload',
     Download = 'download',
+    SourceIP = 'sourceIP',
     Time = 'time'
 }
 
-const shouldCenter = new Set<string>([Columns.Network, Columns.Type, Columns.Rule, Columns.Speed, Columns.Upload, Columns.Download, Columns.Time])
+const shouldCenter = new Set<string>([Columns.Network, Columns.Type, Columns.Rule, Columns.Speed, Columns.Upload, Columns.Download, Columns.SourceIP, Columns.Time])
 
 interface TableColumn<D extends object = {}> extends
     ColumnInstance<D>,
@@ -37,7 +41,12 @@ type TableColumnOption<D extends object = {}> =
 
 interface ITableOptions<D extends object = {}> extends
     TableOptions<D>,
-    UseSortByOptions<D> {}
+    UseSortByOptions<D>,
+    UseFiltersOptions<D> {}
+
+interface ITableInstance<D extends object = {}> extends
+    TableInstance<D>,
+    UseFiltersInstanceProps<D> {}
 
 function formatTraffic(num: number) {
     const s = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -73,6 +82,7 @@ interface formatConnection {
     download: number
     type: string
     network: string
+    sourceIP: string
     speed: {
         upload: number
         download: number
@@ -107,14 +117,21 @@ export default function Connections() {
             time: new Date(c.start).getTime(),
             upload: c.upload,
             download: c.download,
+            sourceIP: c.metadata.sourceIP,
             type: c.metadata.type,
             network: c.metadata.network.toUpperCase(),
             speed: { upload: c.uploadSpeed, download: c.downloadSpeed },
             completed: !!c.completed
         })
     ), [connections])
+    const devices = useMemo(() => {
+        const gb = groupBy(connections, 'metadata.sourceIP')
+        return Object.keys(gb).map(key => ({ label: key, number: gb[key].length })).sort((a, b) => a.label.localeCompare(b.label))
+    }, [connections])
 
     // table
+    const tableRef = useRef<HTMLDivElement>(null)
+    const { x: scrollX } = useScroll(tableRef)
     const columns: TableColumnOption<formatConnection>[] = useMemo(() => [
         { Header: t(`columns.${Columns.Host}`), accessor: Columns.Host, minWidth: 260, width: 260 },
         { Header: t(`columns.${Columns.Network}`), accessor: Columns.Network, minWidth: 80, width: 80 },
@@ -139,6 +156,7 @@ export default function Connections() {
         },
         { Header: t(`columns.${Columns.Upload}`), accessor: Columns.Upload, minWidth: 100, width: 100, sortDescFirst: true },
         { Header: t(`columns.${Columns.Download}`), accessor: Columns.Download, minWidth: 100, width: 100, sortDescFirst: true },
+        { Header: t(`columns.${Columns.SourceIP}`), accessor: Columns.SourceIP, minWidth: 140, width: 140 },
         { Header: t(`columns.${Columns.Time}`), accessor: Columns.Time, minWidth: 120, width: 120, sortType(rowA, rowB) { return rowB.original.time - rowA.original.time } },
     ] as TableColumnOption<formatConnection>[], [t])
 
@@ -174,18 +192,21 @@ export default function Connections() {
         getTableBodyProps,
         headerGroups,
         rows,
-        prepareRow
+        prepareRow,
+        setFilter
     } = useTable(
         {
             columns,
             data,
             autoResetSortBy: false,
+            autoResetFilters: false,
             initialState: { sortBy: [{ id: Columns.Time, desc: false }] }
         } as ITableOptions<formatConnection>,
         useResizeColumns,
         useBlockLayout,
+        useFilters,
         useSortBy
-    )
+    ) as ITableInstance<formatConnection>
     const headerGroup = useMemo(() => headerGroups[0], [headerGroups])
     const renderCell = useCallback(function (cell: Cell<formatConnection>) {
         switch (cell.column.id) {
@@ -201,6 +222,13 @@ export default function Connections() {
         }
     }, [lang])
 
+    // filter
+    const [device, setDevice] = useState('')
+    function handleDeviceSelected (label: string) {
+        setDevice(label)
+        setFilter?.(Columns.SourceIP, label)
+    }
+
     return (
         <div className="page">
             <Header title={t('title')}>
@@ -210,8 +238,9 @@ export default function Connections() {
                 <Checkbox className="connections-filter" checked={save} onChange={toggleSave}>{t('keepClosed')}</Checkbox>
                 <Icon className="connections-filter dangerous" onClick={show} type="close-all" size={20} />
             </Header>
+            { devices.length > 1 && <Devices devices={devices} selected={device} onChange={handleDeviceSelected} /> }
             <Card className="connections-card">
-                <div {...getTableProps()} className="connections">
+                <div {...getTableProps()} className="connections" ref={tableRef}>
                     <div {...headerGroup.getHeaderGroupProps()} className="connections-header">
                         {
                             headerGroup.headers.map((column, idx) => {
@@ -220,7 +249,10 @@ export default function Connections() {
                                 return (
                                     <div
                                         {...realColumn.getHeaderProps()}
-                                        className={classnames('connections-th', { resizing: realColumn.isResizing })}
+                                        className={classnames('connections-th', {
+                                            resizing: realColumn.isResizing,
+                                            fixed: scrollX !== 0 && realColumn.id === Columns.Host
+                                        })}
                                         key={id}>
                                         <div {...realColumn.getSortByToggleProps()}>
                                             {column.render('Header')}
@@ -249,7 +281,8 @@ export default function Connections() {
                                             row.cells.map(cell => {
                                                 const classname = classnames(
                                                     'connections-block',
-                                                    { center: shouldCenter.has(cell.column.id), completed: row.original.completed }
+                                                    { center: shouldCenter.has(cell.column.id), completed: row.original.completed },
+                                                    { fixed: scrollX !== 0 && cell.column.id === Columns.Host }
                                                 )
                                                 return (
                                                     <div {...cell.getCellProps()} className={classname} key={cell.column.id}>
