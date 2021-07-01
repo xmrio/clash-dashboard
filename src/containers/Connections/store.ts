@@ -3,13 +3,32 @@ import { useState, useMemo, useRef, useCallback } from 'react'
 
 export type Connection = API.Connections & { completed?: boolean, uploadSpeed: number, downloadSpeed: number }
 
+export interface FormatConnection {
+    id: string
+    host: string
+    chains: string
+    rule: string
+    time: number
+    upload: number
+    download: number
+    type: string
+    network: string
+    sourceIP: string
+    speed: {
+        upload: number
+        download: number
+    }
+    completed: boolean
+    original: Connection
+}
+
 class Store {
     protected connections = new Map<string, Connection>()
     protected saveDisconnection = false
 
     appendToSet (connections: API.Connections[]) {
         const mapping = connections.reduce(
-            (map, c) => map.set(c.id, c), new Map<string, API.Connections>()
+            (map, c) => map.set(c.id, c), new Map<string, API.Connections>(),
         )
 
         for (const id of this.connections.keys()) {
@@ -18,7 +37,7 @@ class Store {
                     this.connections.delete(id)
                 } else {
                     const connection = this.connections.get(id)
-                    if (connection) {
+                    if (connection != null) {
                         connection.completed = true
                         connection.uploadSpeed = 0
                         connection.downloadSpeed = 0
